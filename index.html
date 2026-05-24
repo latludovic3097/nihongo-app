@@ -555,6 +555,8 @@ textarea.paste-area {
 .sync-bar.offline { background: var(--surface2); color: var(--text2); }
 .sync-bar.hidden  { opacity: 0; pointer-events: none; }
 .screen { padding-top: 30px; }
+/* Hanasu screen doit rester en flex même quand .screen.active force display:block */
+#screen-hanasu.active { display: flex !important; }
 </style>
 </head>
 <body>
@@ -1665,49 +1667,96 @@ function addTypingIndicator() {
   return el;
 }
 
-// Micro — Web Speech Recognition
-function toggleMic() {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    showToast('STT non supporté sur ce navigateur', true);
-    return;
-  }
+// ── Micro — Whisper STT (MediaRecorder → Worker /transcribe) ──
+let hMediaRecorder = null;
+let hAudioChunks = [];
+let hStream = null;
+
+async function toggleMic() {
   if (hRecording) {
-    hRecognition?.stop();
+    // Arrêter l'enregistrement
+    hMediaRecorder?.stop();
     return;
   }
 
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  hRecognition = new SR();
-  hRecognition.lang = 'ja-JP';
-  hRecognition.interimResults = false;
-  hRecognition.maxAlternatives = 1;
+  // Démarrer l'enregistrement
+  try {
+    hStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    showToast('Microphone non autorisé — vérifie les permissions', true);
+    return;
+  }
 
-  hRecognition.onstart = () => {
-    hRecording = true;
-    document.getElementById('mic-btn').classList.add('recording');
-    document.getElementById('mic-btn').textContent = '⏹';
-  };
+  // Choisir le format supporté
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : MediaRecorder.isTypeSupported('audio/webm')
+    ? 'audio/webm'
+    : 'audio/mp4';
 
-  hRecognition.onresult = e => {
-    const transcript = e.results[0][0].transcript;
-    document.getElementById('h-input').value = transcript;
-  };
+  hAudioChunks = [];
+  hMediaRecorder = new MediaRecorder(hStream, { mimeType });
 
-  hRecognition.onend = () => {
+  hMediaRecorder.ondataavailable = e => { if (e.data.size > 0) hAudioChunks.push(e.data); };
+
+  hMediaRecorder.onstop = async () => {
     hRecording = false;
-    document.getElementById('mic-btn').classList.remove('recording');
-    document.getElementById('mic-btn').textContent = '🎤';
-    // Auto-envoyer si du texte a été capturé
-    if (document.getElementById('h-input').value.trim()) sendMessage();
+    setMicUI(false);
+    hStream?.getTracks().forEach(t => t.stop());
+
+    const blob = new Blob(hAudioChunks, { type: mimeType });
+    if (blob.size < 1000) { showToast('Audio trop court — réessaie', true); return; }
+
+    const btn = document.getElementById('mic-btn');
+    btn.textContent = '⏳';
+    btn.disabled = true;
+
+    try {
+      const text = await transcribeWithWhisper(blob);
+      if (text?.trim()) {
+        document.getElementById('h-input').value = text.trim();
+        sendMessage();
+      } else {
+        showToast('Rien détecté — réessaie', true);
+      }
+    } catch(e) {
+      showToast('Erreur transcription — vérifie ta connexion', true);
+    } finally {
+      btn.textContent = '🎤';
+      btn.disabled = false;
+    }
   };
 
-  hRecognition.onerror = () => {
-    hRecording = false;
-    document.getElementById('mic-btn').classList.remove('recording');
-    document.getElementById('mic-btn').textContent = '🎤';
-  };
+  hMediaRecorder.start();
+  hRecording = true;
+  setMicUI(true);
+}
 
-  hRecognition.start();
+function setMicUI(recording) {
+  const btn = document.getElementById('mic-btn');
+  if (recording) {
+    btn.classList.add('recording');
+    btn.textContent = '⏹';
+    btn.title = 'Tap pour arrêter';
+  } else {
+    btn.classList.remove('recording');
+    btn.textContent = '🎤';
+    btn.title = 'Parler en japonais';
+  }
+}
+
+async function transcribeWithWhisper(audioBlob) {
+  const form = new FormData();
+  form.append('audio', audioBlob, 'recording.webm');
+
+  const res = await fetch(WORKER_URL + '/transcribe', {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!res.ok) throw new Error('Whisper HTTP ' + res.status);
+  const data = await res.json();
+  return data.text || '';
 }
 
 function endHanasuSession() {
@@ -1838,9 +1887,13 @@ function showTab(tab) {
   document.getElementById('screen-' + tab).classList.add('active');
   document.getElementById('nav-' + tab).classList.add('active');
 
+  // Le screen hanasu est un flex container — forcer display:flex
+  if (tab === 'hanasu') {
+    document.getElementById('screen-hanasu').style.display = 'flex';
+    initHanasuScreen();
+  }
   if (tab === 'home') updateHomeStats();
   if (tab === 'review') renderReview();
-  if (tab === 'hanasu') initHanasuScreen();
   if (tab === 'progress') updateProgressScreen();
   if (tab === 'sync') updateSyncScreen();
 }
