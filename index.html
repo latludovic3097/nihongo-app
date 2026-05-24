@@ -683,13 +683,13 @@ textarea.paste-area {
       Sa réponse sera lue à voix haute automatiquement.<br>
       <span style="color:var(--accent)" id="worker-status-txt">⚙️ Vérification de la connexion…</span>
     </div>
-    <button class="btn" style="width:100%;padding:14px;font-size:16px" onclick="startHanasu()" id="start-hanasu-btn" disabled>
+    <button class="btn" style="width:100%;padding:14px;font-size:16px" onclick="startHanasu()" id="start-hanasu-btn">
       はじめましょう！ — Commencer
     </button>
   </div>
 
   <!-- Chat actif -->
-  <div id="hanasu-chat" style="display:none;flex:1;display:flex;flex-direction:column;overflow:hidden">
+  <div id="hanasu-chat" style="display:none;flex-direction:column;overflow:hidden;flex:1">
     <div class="messages" id="messages"></div>
     <div class="hanasu-input">
       <textarea id="h-input" placeholder="Écris en japonais… ou utilise le micro 🎤" rows="1"
@@ -1515,23 +1515,27 @@ async function checkWorkerOnline() {
 }
 
 function initHanasuScreen() {
+  if (hActive) return; // déjà en session active, ne pas réinitialiser
   document.getElementById('hanasu-setup').style.display = 'block';
   document.getElementById('hanasu-chat').style.display = 'none';
   document.getElementById('hanasu-bilan').style.display = 'none';
-  if (hActive) return; // déjà en session
 
+  const txt = document.getElementById('worker-status-txt');
+  txt.textContent = '🔄 Vérification…';
+  txt.style.color = 'var(--text2)';
+
+  // Check en arrière-plan — le bouton reste toujours cliquable
   checkWorkerOnline().then(ok => {
-    const txt = document.getElementById('worker-status-txt');
-    const btn = document.getElementById('start-hanasu-btn');
     if (ok) {
       txt.textContent = '✅ Sensei est en ligne — prêt à discuter !';
       txt.style.color = 'var(--success)';
-      btn.disabled = false;
     } else {
-      txt.innerHTML = '❌ Sensei hors ligne.<br><small>Déploie le Cloudflare Worker (voir README)</small>';
-      txt.style.color = 'var(--accent2)';
-      btn.disabled = true;
+      txt.textContent = '⚠️ Connexion incertaine — essaie quand même !';
+      txt.style.color = 'var(--warning)';
     }
+  }).catch(() => {
+    txt.textContent = '⚠️ Vérification impossible — essaie quand même !';
+    txt.style.color = 'var(--warning)';
   });
 }
 
