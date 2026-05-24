@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>日本語学習 — NihonGo</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface2: #334155;
+  --accent: #dc2626;
+  --accent2: #f87171;
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --border: #334155;
+  --nav-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+.screen { display: none; padding: 16px 16px calc(var(--nav-h) + 16px + var(--safe-bottom)); min-height: 100dvh; }
+.screen.active { display: block; }
+
+/* Bottom Navigation */
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  padding-top: 8px;
+  z-index: 100;
+}
+
+.nav-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  transition: color 0.2s;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.nav-btn.active { color: var(--accent); }
+.nav-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-top: 8px;
+}
+
+.header h1 { font-size: 20px; font-weight: 700; }
+.header .jp { font-size: 13px; color: var(--text2); }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--accent);
+  color: white;
+}
+
+/* Stats row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stat-box {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.stat-box .val { font-size: 24px; font-weight: 700; line-height: 1; }
+.stat-box .lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.stat-box.accent .val { color: var(--accent); }
+.stat-box.success .val { color: var(--success); }
+
+/* Mode buttons */
+.modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mode-btn {
+  background: var(--surface);
+  border: none;
+  border-radius: 14px;
+  padding: 16px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, transform 0.1s;
+  color: var(--text);
+}
+
+.mode-btn:active { transform: scale(0.97); background: var(--surface2); }
+.mode-btn .icon { font-size: 24px; margin-bottom: 6px; display: block; }
+.mode-btn .name { font-size: 14px; font-weight: 600; display: block; }
+.mode-btn .desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.mode-btn .count { font-size: 11px; color: var(--accent); font-weight: 600; margin-top: 4px; }
+
+/* Flashcard */
+.flashcard-wrap {
+  perspective: 1200px;
+  width: 100%;
+  height: 240px;
+  margin-bottom: 20px;
+  cursor: pointer;
+}
+
+.flashcard {
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+  position: relative;
+  border-radius: 20px;
+}
+
+.flashcard.flipped { transform: rotateY(180deg); }
+
+.fc-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  border: 2px solid var(--border);
+}
+
+.fc-face.back { transform: rotateY(180deg); background: var(--surface2); }
+.fc-face .jp-big { font-size: 72px; line-height: 1; text-align: center; }
+.fc-face .kana { font-size: 22px; color: var(--text2); margin-top: 8px; }
+.fc-face .romaji { font-size: 15px; color: var(--text2); }
+.fc-face .meaning { font-size: 26px; font-weight: 700; text-align: center; }
+.fc-face .example { font-size: 13px; color: var(--text2); text-align: center; margin-top: 10px; line-height: 1.6; }
+.fc-face .tap-hint { font-size: 12px; color: var(--text2); opacity: 0.6; position: absolute; bottom: 16px; }
+.fc-face .fc-type { font-size: 11px; font-weight: 600; color: var(--accent); position: absolute; top: 14px; right: 16px; }
+.fc-face .tts-btn {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  background: var(--surface2);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 16px;
+}
+
+/* Rating buttons */
+.ratings {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rating-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: transform 0.1s, opacity 0.1s;
+}
+
+.rating-btn:active { transform: scale(0.95); }
+.rating-btn .interval { font-size: 10px; font-weight: 400; opacity: 0.8; display: block; margin-top: 2px; }
+.rating-btn.again { background: #7f1d1d; color: #fca5a5; }
+.rating-btn.hard { background: #78350f; color: #fcd34d; }
+.rating-btn.good { background: #14532d; color: #86efac; }
+.rating-btn.easy { background: #1e3a5f; color: #93c5fd; }
+
+/* Progress bar */
+.progress-bar {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+/* JLPT progress */
+.jlpt-bar {
+  margin-bottom: 16px;
+}
+
+.jlpt-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.jlpt-label .level { font-weight: 700; color: var(--accent); }
+
+/* Skills grid */
+.skills-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.skill-cell {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.skill-cell .skill-name { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.skill-cell .stars { font-size: 14px; margin-bottom: 4px; }
+.skill-cell .accuracy { font-size: 11px; color: var(--text2); }
+
+/* Sync screen */
+.sync-btn {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.sync-btn:active { transform: scale(0.98); opacity: 0.9; }
+.sync-btn.export { background: var(--accent); color: white; }
+.sync-btn.import { background: var(--surface2); color: var(--text); }
+
+textarea.paste-area {
+  width: 100%;
+  min-height: 120px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  padding: 12px;
+  font-size: 13px;
+  font-family: monospace;
+  resize: vertical;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn:active { opacity: 0.8; }
+.btn.secondary { background: var(--surface2); color: var(--text); }
+
+.info-box {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text2);
+  margin-bottom: 12px;
+  border-left: 3px solid var(--accent);
+}
+
+.tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; background: var(--surface2); color: var(--text2); margin-right: 4px; }
+.tag.n5 { background: #14532d; color: #86efac; }
+.tag.n4 { background: #1e3a5f; color: #93c5fd; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface2);
+  color: var(--text);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 200;
+  white-space: nowrap;
+  max-width: 90vw;
+  pointer-events: none;
+}
+
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text2);
+}
+
+.empty-state .big { font-size: 48px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 17px; color: var(--text); margin-bottom: 8px; }
+.empty-state p { font-size: 14px; line-height: 1.5; }
+
+/* Review progress */
+.review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+/* Swipe hint */
+.swipe-hint {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 8px;
+}
+
+/* Achievements */
+.achievement {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.achievement .ach-icon { font-size: 28px; }
+.achievement .ach-name { font-size: 14px; font-weight: 600; }
+.achievement .ach-desc { font-size: 12px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- Home Screen -->
+<div class="screen active" id="screen-home">
+  <div class="header">
+    <div>
+      <h1>日本語学習</h1>
+      <div class="jp">Nihongo Gakushū</div>
+    </div>
+    <div id="streak-badge" class="badge">🔥 0</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box accent">
+      <div class="val" id="stat-due">0</div>
+      <div class="lbl">À réviser</div>
+    </div>
+    <div class="stat-box success">
+      <div class="val" id="stat-known">0</div>
+      <div class="lbl">Cartes</div>
+    </div>
+    <div class="stat-box">
+      <div class="val" id="stat-accuracy">—</div>
+      <div class="lbl">Précision</div>
+    </div>
+  </div>
+
+  <div id="jlpt-progress-bar" class="jlpt-bar" style="display:none">
+    <div class="jlpt-label">
+      <span class="level" id="jlpt-current">N5</span>
+      <span id="jlpt-pct">0% → N4</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="jlpt-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="modes">
+    <button class="mode-btn" onclick="startMode('hiragana')">
+      <span class="icon">あ</span>
+      <span class="name">Hiragana</span>
+      <span class="desc">46 caractères de base</span>
+      <span class="count" id="due-hiragana">0 à réviser</span>
+    </button>
+    <button class="mode-btn" onclick="startMode('katakana')">
+      <span class="icon">ア</span>
+      <span class="name">Katakana</span>
+      <span class="desc">46 caractères</span>
+      <span class="count" id="due-katakana">0 à réviser</span>
+    </button>
+    <button class="mode-btn" onclick="startMode('vocab')">
+      <span class="icon">📖</span>
+      <span class="name">Vocabulaire</span>
+      <span class="desc">Mots essentiels</span>
+      <span class="count" id="due-vocab">0 à réviser</span>
+    </button>
+    <button class="mode-btn" onclick="startMode('grammar')">
+      <span class="icon">⚡</span>
+      <span class="name">Grammaire</span>
+      <span class="desc">Structures N5/N4</span>
+      <span class="count" id="due-grammar">0 à réviser</span>
+    </button>
+  </div>
+
+  <div class="card" style="background:var(--accent);cursor:pointer" onclick="showTab('review')">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:700;font-size:16px">Commencer la révision</div>
+        <div style="font-size:13px;opacity:0.85;margin-top:2px"><span id="total-due-btn">0</span> cartes dues aujourd'hui</div>
+      </div>
+      <span style="font-size:28px">→</span>
+    </div>
+  </div>
+</div>
+
+<!-- Review Screen -->
+<div class="screen" id="screen-review">
+  <div class="header">
+    <h1>復習</h1>
+    <div class="jp" id="review-mode-label">Révision</div>
+  </div>
+
+  <div id="review-empty" class="empty-state" style="display:none">
+    <div class="big">🎉</div>
+    <h3>Aucune révision pour l'instant !</h3>
+    <p>Toutes tes cartes sont à jour.<br>Ajoute du contenu depuis l'onglet Sync ou attend tes prochaines révisions.</p>
+    <br>
+    <button class="btn secondary" onclick="showTab('home')">Retour à l'accueil</button>
+  </div>
+
+  <div id="review-active" style="display:none">
+    <div class="review-header">
+      <span id="review-pos">0 / 0</span>
+      <span id="review-type-badge" class="tag n5">kana</span>
+    </div>
+    <div class="progress-bar" style="margin-bottom:16px">
+      <div class="progress-fill" id="review-progress" style="width:0%"></div>
+    </div>
+
+    <div class="swipe-hint">
+      <span>← Encore</span>
+      <span>Facile →</span>
+    </div>
+
+    <div class="flashcard-wrap" id="fc-wrap" onclick="flipCard()">
+      <div class="flashcard" id="flashcard">
+        <div class="fc-face front">
+          <button class="tts-btn" onclick="event.stopPropagation();speakCard()" title="Écouter">🔊</button>
+          <div class="fc-type" id="fc-type-front"></div>
+          <div class="jp-big" id="fc-front-main"></div>
+          <div class="kana" id="fc-front-sub"></div>
+          <div class="tap-hint">Taper pour révéler</div>
+        </div>
+        <div class="fc-face back">
+          <button class="tts-btn" onclick="event.stopPropagation();speakCard()" title="Écouter">🔊</button>
+          <div class="fc-type" id="fc-type-back"></div>
+          <div class="jp-big" id="fc-back-main"></div>
+          <div class="kana" id="fc-back-kana"></div>
+          <div class="romaji" id="fc-back-romaji"></div>
+          <div class="meaning" id="fc-back-meaning"></div>
+          <div class="example" id="fc-back-example"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ratings" id="ratings-row" style="display:none">
+      <button class="rating-btn again" onclick="rateCard(1)">
+        Encore<span class="interval" id="int-again">< 1j</span>
+      </button>
+      <button class="rating-btn hard" onclick="rateCard(3)">
+        Difficile<span class="interval" id="int-hard">1j</span>
+      </button>
+      <button class="rating-btn good" onclick="rateCard(4)">
+        Bien<span class="interval" id="int-good">2j</span>
+      </button>
+      <button class="rating-btn easy" onclick="rateCard(5)">
+        Facile<span class="interval" id="int-easy">4j</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Progress Screen -->
+<div class="screen" id="screen-progress">
+  <div class="header"><h1>進捗</h1><div class="jp">Progression</div></div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="val" id="prog-sessions">0</div>
+      <div class="lbl">Sessions</div>
+    </div>
+    <div class="stat-box success">
+      <div class="val" id="prog-accuracy">—</div>
+      <div class="lbl">Précision</div>
+    </div>
+    <div class="stat-box accent">
+      <div class="val" id="prog-streak">0</div>
+      <div class="lbl">🔥 Série</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;margin-bottom:12px">Compétences</div>
+    <div class="skills-grid" id="skills-grid"></div>
+  </div>
+
+  <div class="card" id="achievements-card">
+    <div style="font-weight:700;margin-bottom:12px">Succès</div>
+    <div id="achievements-list">
+      <div style="color:var(--text2);font-size:13px">Aucun succès débloqué. Commence à t'entraîner !</div>
+    </div>
+  </div>
+</div>
+
+<!-- Sync Screen -->
+<div class="screen" id="screen-sync">
+  <div class="header"><h1>同期</h1><div class="jp">Synchronisation</div></div>
+
+  <div class="info-box">
+    <strong>Comment ça marche :</strong><br>
+    1. Dans Claude Code, tape <code>/nihongo</code> puis <code>/export</code><br>
+    2. Copie le contenu de <code>sync-export.json</code> et colle-le ci-dessous<br>
+    3. Les nouvelles cartes apparaîtront dans tes révisions<br><br>
+    Pour envoyer ta progression à Claude, utilise "Exporter" puis <code>/import</code>
+  </div>
+
+  <button class="sync-btn export" onclick="exportToClipboard()">
+    📤 Exporter vers Claude
+  </button>
+
+  <button class="sync-btn import" onclick="toggleImportArea()">
+    📥 Importer depuis Claude
+  </button>
+
+  <div id="import-area" style="display:none;margin-top:10px">
+    <textarea class="paste-area" id="import-json" placeholder='Colle ici le JSON exporté depuis Claude (contenu de sync-export.json)...'></textarea>
+    <div style="display:flex;gap:10px">
+      <button class="btn" onclick="importFromClipboard()">Importer</button>
+      <label class="btn secondary" style="cursor:pointer">
+        📂 Fichier
+        <input type="file" accept=".json" style="display:none" onchange="importFromFile(this)">
+      </label>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div style="font-weight:700;margin-bottom:10px">État de la synchronisation</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.8" id="sync-status">
+      Dernière sync : jamais<br>
+      Cartes totales : <span id="sync-card-count">0</span><br>
+      Source : —
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0">
+    <div style="font-weight:700;margin-bottom:10px">Réinitialisation</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Supprimer toutes les données locales (irréversible).</div>
+    <button class="btn" style="background:#7f1d1d;color:#fca5a5" onclick="resetData()">Tout effacer</button>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="nav">
+  <button class="nav-btn active" id="nav-home" onclick="showTab('home')">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    ホーム
+  </button>
+  <button class="nav-btn" id="nav-review" onclick="showTab('review')">
+    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    復習
+  </button>
+  <button class="nav-btn" id="nav-progress" onclick="showTab('progress')">
+    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    進捗
+  </button>
+  <button class="nav-btn" id="nav-sync" onclick="showTab('sync')">
+    <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+    同期
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// BUILT-IN KANA DATA
+// ============================================================
+const HIRAGANA = [
+  {jp:'あ',r:'a'},{jp:'い',r:'i'},{jp:'う',r:'u'},{jp:'え',r:'e'},{jp:'お',r:'o'},
+  {jp:'か',r:'ka'},{jp:'き',r:'ki'},{jp:'く',r:'ku'},{jp:'け',r:'ke'},{jp:'こ',r:'ko'},
+  {jp:'さ',r:'sa'},{jp:'し',r:'shi'},{jp:'す',r:'su'},{jp:'せ',r:'se'},{jp:'そ',r:'so'},
+  {jp:'た',r:'ta'},{jp:'ち',r:'chi'},{jp:'つ',r:'tsu'},{jp:'て',r:'te'},{jp:'と',r:'to'},
+  {jp:'な',r:'na'},{jp:'に',r:'ni'},{jp:'ぬ',r:'nu'},{jp:'ね',r:'ne'},{jp:'の',r:'no'},
+  {jp:'は',r:'ha'},{jp:'ひ',r:'hi'},{jp:'ふ',r:'fu'},{jp:'へ',r:'he'},{jp:'ほ',r:'ho'},
+  {jp:'ま',r:'ma'},{jp:'み',r:'mi'},{jp:'む',r:'mu'},{jp:'め',r:'me'},{jp:'も',r:'mo'},
+  {jp:'や',r:'ya'},{jp:'ゆ',r:'yu'},{jp:'よ',r:'yo'},
+  {jp:'ら',r:'ra'},{jp:'り',r:'ri'},{jp:'る',r:'ru'},{jp:'れ',r:'re'},{jp:'ろ',r:'ro'},
+  {jp:'わ',r:'wa'},{jp:'を',r:'wo'},{jp:'ん',r:'n'},
+  {jp:'が',r:'ga'},{jp:'ぎ',r:'gi'},{jp:'ぐ',r:'gu'},{jp:'げ',r:'ge'},{jp:'ご',r:'go'},
+  {jp:'ざ',r:'za'},{jp:'じ',r:'ji'},{jp:'ず',r:'zu'},{jp:'ぜ',r:'ze'},{jp:'ぞ',r:'zo'},
+  {jp:'だ',r:'da'},{jp:'で',r:'de'},{jp:'ど',r:'do'},
+  {jp:'ば',r:'ba'},{jp:'び',r:'bi'},{jp:'ぶ',r:'bu'},{jp:'べ',r:'be'},{jp:'ぼ',r:'bo'},
+  {jp:'ぱ',r:'pa'},{jp:'ぴ',r:'pi'},{jp:'ぷ',r:'pu'},{jp:'ぺ',r:'pe'},{jp:'ぽ',r:'po'},
+  {jp:'きゃ',r:'kya'},{jp:'きゅ',r:'kyu'},{jp:'きょ',r:'kyo'},
+  {jp:'しゃ',r:'sha'},{jp:'しゅ',r:'shu'},{jp:'しょ',r:'sho'},
+  {jp:'ちゃ',r:'cha'},{jp:'ちゅ',r:'chu'},{jp:'ちょ',r:'cho'},
+  {jp:'にゃ',r:'nya'},{jp:'にゅ',r:'nyu'},{jp:'にょ',r:'nyo'},
+  {jp:'ひゃ',r:'hya'},{jp:'ひゅ',r:'hyu'},{jp:'ひょ',r:'hyo'},
+  {jp:'みゃ',r:'mya'},{jp:'みゅ',r:'myu'},{jp:'みょ',r:'myo'},
+  {jp:'りゃ',r:'rya'},{jp:'りゅ',r:'ryu'},{jp:'りょ',r:'ryo'},
+  {jp:'ぎゃ',r:'gya'},{jp:'ぎゅ',r:'gyu'},{jp:'ぎょ',r:'gyo'},
+  {jp:'じゃ',r:'ja'},{jp:'じゅ',r:'ju'},{jp:'じょ',r:'jo'},
+  {jp:'びゃ',r:'bya'},{jp:'びゅ',r:'byu'},{jp:'びょ',r:'byo'},
+  {jp:'ぴゃ',r:'pya'},{jp:'ぴゅ',r:'pyu'},{jp:'ぴょ',r:'pyo'}
+];
+
+const KATAKANA = [
+  {jp:'ア',r:'a'},{jp:'イ',r:'i'},{jp:'ウ',r:'u'},{jp:'エ',r:'e'},{jp:'オ',r:'o'},
+  {jp:'カ',r:'ka'},{jp:'キ',r:'ki'},{jp:'ク',r:'ku'},{jp:'ケ',r:'ke'},{jp:'コ',r:'ko'},
+  {jp:'サ',r:'sa'},{jp:'シ',r:'shi'},{jp:'ス',r:'su'},{jp:'セ',r:'se'},{jp:'ソ',r:'so'},
+  {jp:'タ',r:'ta'},{jp:'チ',r:'chi'},{jp:'ツ',r:'tsu'},{jp:'テ',r:'te'},{jp:'ト',r:'to'},
+  {jp:'ナ',r:'na'},{jp:'ニ',r:'ni'},{jp:'ヌ',r:'nu'},{jp:'ネ',r:'ne'},{jp:'ノ',r:'no'},
+  {jp:'ハ',r:'ha'},{jp:'ヒ',r:'hi'},{jp:'フ',r:'fu'},{jp:'ヘ',r:'he'},{jp:'ホ',r:'ho'},
+  {jp:'マ',r:'ma'},{jp:'ミ',r:'mi'},{jp:'ム',r:'mu'},{jp:'メ',r:'me'},{jp:'モ',r:'mo'},
+  {jp:'ヤ',r:'ya'},{jp:'ユ',r:'yu'},{jp:'ヨ',r:'yo'},
+  {jp:'ラ',r:'ra'},{jp:'リ',r:'ri'},{jp:'ル',r:'ru'},{jp:'レ',r:'re'},{jp:'ロ',r:'ro'},
+  {jp:'ワ',r:'wa'},{jp:'ヲ',r:'wo'},{jp:'ン',r:'n'},
+  {jp:'ガ',r:'ga'},{jp:'ギ',r:'gi'},{jp:'グ',r:'gu'},{jp:'ゲ',r:'ge'},{jp:'ゴ',r:'go'},
+  {jp:'ザ',r:'za'},{jp:'ジ',r:'ji'},{jp:'ズ',r:'zu'},{jp:'ゼ',r:'ze'},{jp:'ゾ',r:'zo'},
+  {jp:'ダ',r:'da'},{jp:'デ',r:'de'},{jp:'ド',r:'do'},
+  {jp:'バ',r:'ba'},{jp:'ビ',r:'bi'},{jp:'ブ',r:'bu'},{jp:'ベ',r:'be'},{jp:'ボ',r:'bo'},
+  {jp:'パ',r:'pa'},{jp:'ピ',r:'pi'},{jp:'プ',r:'pu'},{jp:'ペ',r:'pe'},{jp:'ポ',r:'po'}
+];
+
+const VOCAB_N5 = [
+  {id:'v001',jp:'食べる',k:'たべる',r:'taberu',fr:'manger',type:'verbe',jlpt:'N5',ex:'ご飯を食べます'},
+  {id:'v002',jp:'飲む',k:'のむ',r:'nomu',fr:'boire',type:'verbe',jlpt:'N5',ex:'水を飲みます'},
+  {id:'v003',jp:'行く',k:'いく',r:'iku',fr:'aller',type:'verbe',jlpt:'N5',ex:'学校に行きます'},
+  {id:'v004',jp:'来る',k:'くる',r:'kuru',fr:'venir',type:'verbe irr.',jlpt:'N5',ex:'家に来てください'},
+  {id:'v005',jp:'見る',k:'みる',r:'miru',fr:'voir / regarder',type:'verbe',jlpt:'N5',ex:'映画を見ます'},
+  {id:'v006',jp:'聞く',k:'きく',r:'kiku',fr:'écouter / entendre',type:'verbe',jlpt:'N5',ex:'音楽を聞きます'},
+  {id:'v007',jp:'話す',k:'はなす',r:'hanasu',fr:'parler',type:'verbe',jlpt:'N5',ex:'日本語を話します'},
+  {id:'v008',jp:'読む',k:'よむ',r:'yomu',fr:'lire',type:'verbe',jlpt:'N5',ex:'本を読みます'},
+  {id:'v009',jp:'書く',k:'かく',r:'kaku',fr:'écrire',type:'verbe',jlpt:'N5',ex:'手紙を書きます'},
+  {id:'v010',jp:'する',k:'する',r:'suru',fr:'faire',type:'verbe irr.',jlpt:'N5',ex:'勉強をします'},
+  {id:'v011',jp:'ある',k:'ある',r:'aru',fr:'exister (inanimé)',type:'verbe',jlpt:'N5',ex:'本があります'},
+  {id:'v012',jp:'いる',k:'いる',r:'iru',fr:'exister (animé)',type:'verbe',jlpt:'N5',ex:'猫がいます'},
+  {id:'v013',jp:'わかる',k:'わかる',r:'wakaru',fr:'comprendre',type:'verbe',jlpt:'N5',ex:'日本語がわかります'},
+  {id:'v014',jp:'大きい',k:'おおきい',r:'ookii',fr:'grand',type:'adj-i',jlpt:'N5',ex:'大きい犬'},
+  {id:'v015',jp:'小さい',k:'ちいさい',r:'chiisai',fr:'petit',type:'adj-i',jlpt:'N5',ex:'小さい猫'},
+  {id:'v016',jp:'高い',k:'たかい',r:'takai',fr:'cher / haut',type:'adj-i',jlpt:'N5',ex:'高いビル'},
+  {id:'v017',jp:'安い',k:'やすい',r:'yasui',fr:'bon marché',type:'adj-i',jlpt:'N5',ex:'安いレストラン'},
+  {id:'v018',jp:'新しい',k:'あたらしい',r:'atarashii',fr:'nouveau',type:'adj-i',jlpt:'N5',ex:'新しい車'},
+  {id:'v019',jp:'古い',k:'ふるい',r:'furui',fr:'vieux',type:'adj-i',jlpt:'N5',ex:'古いお寺'},
+  {id:'v020',jp:'いい',k:'いい',r:'ii',fr:'bien / bon',type:'adj-i',jlpt:'N5',ex:'いい天気'},
+  {id:'v021',jp:'学校',k:'がっこう',r:'gakkou',fr:'école',type:'nom',jlpt:'N5',ex:'学校に行きます'},
+  {id:'v022',jp:'家',k:'いえ / うち',r:'ie / uchi',fr:'maison',type:'nom',jlpt:'N5',ex:'家に帰ります'},
+  {id:'v023',jp:'駅',k:'えき',r:'eki',fr:'gare',type:'nom',jlpt:'N5',ex:'駅はどこですか？'},
+  {id:'v024',jp:'水',k:'みず',r:'mizu',fr:'eau',type:'nom',jlpt:'N5',ex:'水を飲みます'},
+  {id:'v025',jp:'ご飯',k:'ごはん',r:'gohan',fr:'riz / repas',type:'nom',jlpt:'N5',ex:'ご飯を食べます'},
+  {id:'v026',jp:'友達',k:'ともだち',r:'tomodachi',fr:'ami(e)',type:'nom',jlpt:'N5',ex:'友達と行きます'},
+  {id:'v027',jp:'先生',k:'せんせい',r:'sensei',fr:'professeur',type:'nom',jlpt:'N5',ex:'先生に聞きます'},
+  {id:'v028',jp:'今日',k:'きょう',r:'kyou',fr:"aujourd'hui",type:'nom',jlpt:'N5',ex:'今日は何曜日ですか？'},
+  {id:'v029',jp:'明日',k:'あした',r:'ashita',fr:'demain',type:'nom',jlpt:'N5',ex:'明日来てください'},
+  {id:'v030',jp:'昨日',k:'きのう',r:'kinou',fr:'hier',type:'nom',jlpt:'N5',ex:'昨日何をしましたか？'},
+  {id:'v031',jp:'今',k:'いま',r:'ima',fr:'maintenant',type:'nom',jlpt:'N5',ex:'今何時ですか？'},
+  {id:'v032',jp:'何',k:'なに / なん',r:'nani / nan',fr:'quoi',type:'pronom',jlpt:'N5',ex:'何が好きですか？'},
+  {id:'v033',jp:'どこ',k:'どこ',r:'doko',fr:'où',type:'pronom',jlpt:'N5',ex:'どこに行きますか？'},
+  {id:'v034',jp:'いつ',k:'いつ',r:'itsu',fr:'quand',type:'pronom',jlpt:'N5',ex:'いつ来ますか？'},
+  {id:'v035',jp:'誰',k:'だれ',r:'dare',fr:'qui',type:'pronom',jlpt:'N5',ex:'誰ですか？'},
+  {id:'v036',jp:'私',k:'わたし',r:'watashi',fr:'je / moi',type:'pronom',jlpt:'N5',ex:'私は学生です'},
+  {id:'v037',jp:'あなた',k:'あなた',r:'anata',fr:'vous / tu',type:'pronom',jlpt:'N5',ex:'あなたの名前は？'},
+  {id:'v038',jp:'猫',k:'ねこ',r:'neko',fr:'chat',type:'nom',jlpt:'N5',ex:'猫がいます'},
+  {id:'v039',jp:'犬',k:'いぬ',r:'inu',fr:'chien',type:'nom',jlpt:'N5',ex:'犬が好きです'},
+  {id:'v040',jp:'本',k:'ほん',r:'hon',fr:'livre',type:'nom',jlpt:'N5',ex:'本を読みます'},
+  {id:'v041',jp:'お金',k:'おかね',r:'okane',fr:'argent',type:'nom',jlpt:'N5',ex:'お金があります'},
+  {id:'v042',jp:'時間',k:'じかん',r:'jikan',fr:'temps / heure',type:'nom',jlpt:'N5',ex:'時間がありません'},
+  {id:'v043',jp:'好き',k:'すき',r:'suki',fr:'aimer',type:'adj-na',jlpt:'N5',ex:'音楽が好きです'},
+  {id:'v044',jp:'嫌い',k:'きらい',r:'kirai',fr:'détester',type:'adj-na',jlpt:'N5',ex:'野菜が嫌いです'},
+  {id:'v045',jp:'元気',k:'げんき',r:'genki',fr:'en forme',type:'adj-na',jlpt:'N5',ex:'元気ですか？'},
+  {id:'v046',jp:'ありがとう',k:'ありがとう',r:'arigatou',fr:'merci',type:'expression',jlpt:'N5',ex:'ありがとうございます'},
+  {id:'v047',jp:'すみません',k:'すみません',r:'sumimasen',fr:'excusez-moi',type:'expression',jlpt:'N5',ex:'すみません、どこですか？'},
+  {id:'v048',jp:'はい',k:'はい',r:'hai',fr:'oui',type:'expression',jlpt:'N5'},
+  {id:'v049',jp:'いいえ',k:'いいえ',r:'iie',fr:'non',type:'expression',jlpt:'N5'},
+  {id:'v050',jp:'日本語',k:'にほんご',r:'nihongo',fr:'japonais (langue)',type:'nom',jlpt:'N5',ex:'日本語を勉強します'}
+];
+
+const GRAMMAR_N5 = [
+  {id:'g001',pattern:'〜は〜です',desc:'A est B (affirmation polie)',ex:'私は学生です。',fr:'Je suis étudiant(e).',jlpt:'N5'},
+  {id:'g002',pattern:'〜ます / 〜ません',desc:'Forme polie des verbes (aff./nég.)',ex:'食べます / 食べません',fr:'Je mange / je ne mange pas.',jlpt:'N5'},
+  {id:'g003',pattern:'〜を〜',desc:'Particule を : objet direct',ex:'ご飯を食べます',fr:"Je mange du riz (riz = objet de 'manger').",jlpt:'N5'},
+  {id:'g004',pattern:'〜に行く',desc:'Aller vers (direction)',ex:'学校に行きます',fr:"Je vais à l'école.",jlpt:'N5'},
+  {id:'g005',pattern:'〜で〜',desc:'Particule で : lieu d'action / moyen',ex:'電車で行きます',fr:'Je vais en train.',jlpt:'N5'},
+  {id:'g006',pattern:'〜と〜',desc:'Particule と : avec (qqn) / et',ex:'友達と行きます',fr:'Je vais avec mon ami.',jlpt:'N5'},
+  {id:'g007',pattern:'〜ましたか',desc:'Question au passé (forme polie)',ex:'何を食べましたか？',fr:"Qu'est-ce que vous avez mangé ?",jlpt:'N5'},
+  {id:'g008',pattern:'〜たい',desc:'Vouloir faire qqch',ex:'水が飲みたいです',fr:"J'ai envie de boire de l'eau.",jlpt:'N5'}
+];
+
+// ============================================================
+// DATA LAYER
+// ============================================================
+const DB_KEY = 'nihongo_v1';
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return createDefaultData();
+}
+
+function saveData(d) {
+  d.meta.last_updated = new Date().toISOString();
+  localStorage.setItem(DB_KEY, JSON.stringify(d));
+}
+
+function createDefaultData() {
+  const d = {
+    meta: { version: '1.0', last_updated: new Date().toISOString(), last_sync: null, sync_source: null },
+    learner: { name: '', jlpt_goal: 'N4', current_level: 'N5', streak_days: 0, last_session: null, total_sessions: 0 },
+    stats: { total_reviews: 0, total_correct: 0 },
+    kana: { hiragana: {}, katakana: {} },
+    vocab: {},
+    grammar: {},
+    achievements: [],
+    oral_sessions: []
+  };
+  _initBuiltins(d);
+  return d;
+}
+
+function _initBuiltins(d) {
+  HIRAGANA.forEach(h => {
+    if (!d.kana.hiragana[h.jp]) {
+      d.kana.hiragana[h.jp] = { r: h.r, sm2: null };
+    }
+  });
+  KATAKANA.forEach(k => {
+    if (!d.kana.katakana[k.jp]) {
+      d.kana.katakana[k.jp] = { r: k.r, sm2: null };
+    }
+  });
+  VOCAB_N5.forEach(v => {
+    if (!d.vocab[v.id]) d.vocab[v.id] = { ...v, sm2: null };
+  });
+  GRAMMAR_N5.forEach(g => {
+    if (!d.grammar[g.id]) d.grammar[g.id] = { ...g, sm2: null };
+  });
+}
+
+// ============================================================
+// SM-2 ALGORITHM
+// ============================================================
+function sm2Calc(card, quality) {
+  let { ef = 2.5, interval = 0, reps = 0 } = card.sm2 || {};
+  if (quality >= 3) {
+    interval = reps === 0 ? 1 : reps === 1 ? 6 : Math.round(interval * ef);
+    reps++;
+  } else {
+    interval = 1;
+    reps = 0;
+  }
+  ef = Math.max(1.3, ef + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+  const due = new Date();
+  due.setDate(due.getDate() + interval);
+  return { ef: +ef.toFixed(2), interval, reps, due: due.toISOString().split('T')[0], last: today() };
+}
+
+function previewIntervals(sm2) {
+  const fmtInterval = i => i < 1 ? '< 1j' : i === 1 ? '1j' : i < 30 ? i+'j' : Math.round(i/30)+'m';
+  return {
+    again: '< 1j',
+    hard: fmtInterval(sm2Calc({sm2: sm2 || null}, 3).interval),
+    good: fmtInterval(sm2Calc({sm2: sm2 || null}, 4).interval),
+    easy: fmtInterval(sm2Calc({sm2: sm2 || null}, 5).interval)
+  };
+}
+
+// ============================================================
+// REVIEW QUEUE
+// ============================================================
+let reviewQueue = [];
+let reviewIndex = 0;
+let currentMode = 'all';
+let cardFlipped = false;
+
+function buildQueue(mode) {
+  const d = loadData();
+  const t = today();
+  const q = [];
+
+  function isDue(sm2) { return !sm2 || sm2.due <= t; }
+
+  if (mode === 'all' || mode === 'hiragana') {
+    Object.entries(d.kana.hiragana).forEach(([jp, info]) => {
+      if (isDue(info.sm2)) q.push({ type: 'kana', sys: 'hiragana', jp, r: info.r, sm2: info.sm2 });
+    });
+  }
+  if (mode === 'all' || mode === 'katakana') {
+    Object.entries(d.kana.katakana).forEach(([jp, info]) => {
+      if (isDue(info.sm2)) q.push({ type: 'kana', sys: 'katakana', jp, r: info.r, sm2: info.sm2 });
+    });
+  }
+  if (mode === 'all' || mode === 'vocab') {
+    Object.values(d.vocab).forEach(v => {
+      if (isDue(v.sm2)) q.push({ type: 'vocab', ...v });
+    });
+  }
+  if (mode === 'all' || mode === 'grammar') {
+    Object.values(d.grammar).forEach(g => {
+      if (isDue(g.sm2)) q.push({ type: 'grammar', ...g });
+    });
+  }
+
+  // Sort: cards never seen first, then by due date
+  q.sort((a,b) => {
+    if (!a.sm2 && b.sm2) return -1;
+    if (a.sm2 && !b.sm2) return 1;
+    if (!a.sm2 && !b.sm2) return 0;
+    return (a.sm2.due || '').localeCompare(b.sm2.due || '');
+  });
+
+  // Limit to 50 per session
+  return q.slice(0, 50);
+}
+
+function countDue(mode) {
+  return buildQueue(mode).length;
+}
+
+function startMode(mode) {
+  currentMode = mode;
+  reviewQueue = buildQueue(mode);
+  reviewIndex = 0;
+  cardFlipped = false;
+  showTab('review');
+  renderReview();
+}
+
+// ============================================================
+// CARD RENDERING
+// ============================================================
+function renderCard(card) {
+  const fc = document.getElementById('flashcard');
+  fc.classList.remove('flipped');
+  cardFlipped = false;
+  document.getElementById('ratings-row').style.display = 'none';
+
+  const prevIntervals = previewIntervals(card.sm2);
+  document.getElementById('int-again').textContent = prevIntervals.again;
+  document.getElementById('int-hard').textContent = prevIntervals.hard;
+  document.getElementById('int-good').textContent = prevIntervals.good;
+  document.getElementById('int-easy').textContent = prevIntervals.easy;
+
+  if (card.type === 'kana') {
+    // Front: kana character
+    document.getElementById('fc-type-front').textContent = card.sys === 'hiragana' ? 'Hiragana' : 'Katakana';
+    document.getElementById('fc-front-main').textContent = card.jp;
+    document.getElementById('fc-front-sub').textContent = '';
+    // Back: romaji
+    document.getElementById('fc-type-back').textContent = card.sys === 'hiragana' ? 'Hiragana' : 'Katakana';
+    document.getElementById('fc-back-main').textContent = card.jp;
+    document.getElementById('fc-back-kana').textContent = '';
+    document.getElementById('fc-back-romaji').textContent = card.r;
+    document.getElementById('fc-back-meaning').textContent = '';
+    document.getElementById('fc-back-example').textContent = '';
+    document.getElementById('review-type-badge').textContent = card.sys;
+    document.getElementById('review-type-badge').className = 'tag n5';
+
+  } else if (card.type === 'vocab') {
+    // Front: Japanese + kana
+    document.getElementById('fc-type-front').textContent = card.jlpt || 'N5';
+    document.getElementById('fc-front-main').textContent = card.jp;
+    document.getElementById('fc-front-sub').textContent = card.k || '';
+    // Back: meaning + romaji + example
+    document.getElementById('fc-type-back').textContent = card.type || 'vocab';
+    document.getElementById('fc-back-main').textContent = card.jp;
+    document.getElementById('fc-back-kana').textContent = card.k || '';
+    document.getElementById('fc-back-romaji').textContent = card.r || '';
+    document.getElementById('fc-back-meaning').textContent = card.fr || '';
+    document.getElementById('fc-back-example').textContent = card.ex || '';
+    document.getElementById('review-type-badge').textContent = 'vocab';
+    document.getElementById('review-type-badge').className = 'tag ' + (card.jlpt||'n5').toLowerCase();
+
+  } else if (card.type === 'grammar') {
+    // Front: pattern
+    document.getElementById('fc-type-front').textContent = card.jlpt || 'N5';
+    document.getElementById('fc-front-main').style.fontSize = '36px';
+    document.getElementById('fc-front-main').textContent = card.pattern || '';
+    document.getElementById('fc-front-sub').textContent = '';
+    // Back: description + example
+    document.getElementById('fc-type-back').textContent = 'grammaire';
+    document.getElementById('fc-back-main').style.fontSize = '28px';
+    document.getElementById('fc-back-main').textContent = card.pattern || '';
+    document.getElementById('fc-back-kana').textContent = card.ex || '';
+    document.getElementById('fc-back-romaji').textContent = '';
+    document.getElementById('fc-back-meaning').textContent = card.desc || '';
+    document.getElementById('fc-back-example').textContent = card.fr || '';
+    document.getElementById('review-type-badge').textContent = 'grammaire';
+    document.getElementById('review-type-badge').className = 'tag';
+  }
+}
+
+function flipCard() {
+  if (cardFlipped) return;
+  cardFlipped = true;
+  document.getElementById('flashcard').classList.add('flipped');
+  document.getElementById('ratings-row').style.display = 'grid';
+}
+
+function speakCard() {
+  const card = reviewQueue[reviewIndex];
+  if (!card) return;
+  const text = card.jp || card.pattern || '';
+  if (!text) return;
+  speak(text);
+}
+
+function rateCard(quality) {
+  const card = reviewQueue[reviewIndex];
+  if (!card) return;
+
+  const d = loadData();
+  const newSm2 = sm2Calc(card, quality);
+
+  if (card.type === 'kana') {
+    d.kana[card.sys][card.jp].sm2 = newSm2;
+  } else if (card.type === 'vocab') {
+    if (d.vocab[card.id]) d.vocab[card.id].sm2 = newSm2;
+  } else if (card.type === 'grammar') {
+    if (d.grammar[card.id]) d.grammar[card.id].sm2 = newSm2;
+  }
+
+  d.stats.total_reviews = (d.stats.total_reviews || 0) + 1;
+  if (quality >= 3) d.stats.total_correct = (d.stats.total_correct || 0) + 1;
+
+  saveData(d);
+
+  reviewIndex++;
+  if (reviewIndex >= reviewQueue.length) {
+    // Session complete
+    const total = reviewQueue.length;
+    showToast(`✅ Session terminée ! ${total} cartes révisées`);
+    setTimeout(() => {
+      showTab('home');
+      updateHomeStats();
+    }, 1500);
+  } else {
+    renderReview();
+  }
+}
+
+function renderReview() {
+  const empty = document.getElementById('review-empty');
+  const active = document.getElementById('review-active');
+
+  if (reviewQueue.length === 0) {
+    empty.style.display = 'block';
+    active.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  active.style.display = 'block';
+
+  const card = reviewQueue[reviewIndex];
+  if (!card) return;
+
+  document.getElementById('review-pos').textContent = `${reviewIndex + 1} / ${reviewQueue.length}`;
+  const pct = (reviewIndex / reviewQueue.length) * 100;
+  document.getElementById('review-progress').style.width = pct + '%';
+
+  const modeName = { hiragana: 'Hiragana', katakana: 'Katakana', vocab: 'Vocabulaire', grammar: 'Grammaire', all: 'Révision générale' };
+  document.getElementById('review-mode-label').textContent = modeName[currentMode] || 'Révision';
+
+  renderCard(card);
+}
+
+// ============================================================
+// SWIPE GESTURES
+// ============================================================
+let touchStartX = 0;
+const fcWrap = document.getElementById('fc-wrap');
+
+fcWrap.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+fcWrap.addEventListener('touchend', e => {
+  if (!cardFlipped) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 60) {
+    if (dx > 0) rateCard(5); // swipe right = Easy
+    else rateCard(1);         // swipe left = Again
+  }
+}, { passive: true });
+
+// ============================================================
+// TTS
+// ============================================================
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP';
+  u.rate = 0.85;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
+
+// ============================================================
+// HOME STATS
+// ============================================================
+function updateHomeStats() {
+  const d = loadData();
+  const dueAll = countDue('all');
+  const dueH = countDue('hiragana');
+  const dueK = countDue('katakana');
+  const dueV = countDue('vocab');
+  const dueG = countDue('grammar');
+
+  const allCards = Object.keys(d.kana.hiragana).length + Object.keys(d.kana.katakana).length
+    + Object.keys(d.vocab).length + Object.keys(d.grammar).length;
+
+  const totalR = d.stats?.total_reviews || 0;
+  const totalC = d.stats?.total_correct || 0;
+  const acc = totalR > 0 ? Math.round(totalC / totalR * 100) + '%' : '—';
+
+  document.getElementById('stat-due').textContent = dueAll;
+  document.getElementById('stat-known').textContent = allCards;
+  document.getElementById('stat-accuracy').textContent = acc;
+  document.getElementById('streak-badge').textContent = '🔥 ' + (d.learner?.streak_days || 0);
+  document.getElementById('total-due-btn').textContent = dueAll;
+  document.getElementById('due-hiragana').textContent = dueH + ' à réviser';
+  document.getElementById('due-katakana').textContent = dueK + ' à réviser';
+  document.getElementById('due-vocab').textContent = dueV + ' à réviser';
+  document.getElementById('due-grammar').textContent = dueG + ' à réviser';
+}
+
+// ============================================================
+// PROGRESS SCREEN
+// ============================================================
+function updateProgressScreen() {
+  const d = loadData();
+  const totalR = d.stats?.total_reviews || 0;
+  const totalC = d.stats?.total_correct || 0;
+  const acc = totalR > 0 ? Math.round(totalC / totalR * 100) + '%' : '—';
+
+  document.getElementById('prog-sessions').textContent = d.learner?.total_sessions || 0;
+  document.getElementById('prog-accuracy').textContent = acc;
+  document.getElementById('prog-streak').textContent = d.learner?.streak_days || 0;
+
+  function masteryStars(pct) {
+    const stars = Math.round((pct || 0) / 20);
+    return '★'.repeat(stars) + '☆'.repeat(5 - stars);
+  }
+
+  function masteryPct(type) {
+    const seen = Object.values(d[type] || {}).filter(v => v.sm2 && v.sm2.reps > 0).length;
+    const total = Object.keys(d[type] || {}).length;
+    return total > 0 ? Math.round(seen / total * 100) : 0;
+  }
+
+  function kanaMasteryPct(sys) {
+    const seen = Object.values(d.kana[sys] || {}).filter(v => v.sm2 && v.sm2.reps > 0).length;
+    const total = Object.keys(d.kana[sys] || {}).length;
+    return total > 0 ? Math.round(seen / total * 100) : 0;
+  }
+
+  const skills = [
+    { name: 'Hiragana', pct: kanaMasteryPct('hiragana'), count: Object.keys(d.kana.hiragana).length },
+    { name: 'Katakana', pct: kanaMasteryPct('katakana'), count: Object.keys(d.kana.katakana).length },
+    { name: 'Vocabulaire', pct: masteryPct('vocab'), count: Object.keys(d.vocab).length },
+    { name: 'Grammaire', pct: masteryPct('grammar'), count: Object.keys(d.grammar).length },
+    { name: 'Oral', pct: Math.min(100, (d.oral_sessions?.length || 0) * 10), count: d.oral_sessions?.length || 0 },
+    { name: 'Lecture', pct: 0, count: 0 }
+  ];
+
+  document.getElementById('skills-grid').innerHTML = skills.map(s => `
+    <div class="skill-cell">
+      <div class="skill-name">${s.name}</div>
+      <div class="stars">${masteryStars(s.pct)}</div>
+      <div class="accuracy">${s.pct}% • ${s.count} cartes</div>
+    </div>
+  `).join('');
+
+  const ach = d.achievements || [];
+  document.getElementById('achievements-list').innerHTML = ach.length === 0
+    ? '<div style="color:var(--text2);font-size:13px">Aucun succès débloqué. Commence à t\'entraîner !</div>'
+    : ach.map(a => `<div class="achievement"><div class="ach-icon">${a.icon||'🏅'}</div><div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc||''}</div></div></div>`).join('');
+}
+
+// ============================================================
+// SYNC SCREEN
+// ============================================================
+function updateSyncScreen() {
+  const d = loadData();
+  const totalCards = Object.keys(d.vocab).length + Object.keys(d.grammar).length
+    + Object.keys(d.kana.hiragana).length + Object.keys(d.kana.katakana).length;
+  document.getElementById('sync-card-count').textContent = totalCards;
+  const ls = d.meta?.last_sync ? new Date(d.meta.last_sync).toLocaleDateString('fr-FR') : 'jamais';
+  document.getElementById('sync-status').innerHTML =
+    `Dernière sync : ${ls}<br>Cartes totales : ${totalCards}<br>Source : ${d.meta?.sync_source || '—'}`;
+}
+
+function toggleImportArea() {
+  const a = document.getElementById('import-area');
+  a.style.display = a.style.display === 'none' ? 'block' : 'none';
+}
+
+function exportToClipboard() {
+  const d = loadData();
+  const exportData = {
+    meta: { version: '1.0', exported_at: new Date().toISOString(), source: 'web-app' },
+    learner: d.learner,
+    stats: d.stats,
+    kana_mastery: d.kana,
+    vocabulary_cards: Object.values(d.vocab),
+    grammar_cards: Object.values(d.grammar),
+    oral_sessions: d.oral_sessions || [],
+    achievements: d.achievements || []
+  };
+  const json = JSON.stringify(exportData, null, 2);
+  navigator.clipboard.writeText(json).then(() => {
+    showToast('📋 Copié ! Colle dans Claude avec /import');
+  }).catch(() => {
+    // Fallback: show in textarea
+    document.getElementById('import-area').style.display = 'block';
+    document.getElementById('import-json').value = json;
+    showToast('Copie le JSON ci-dessus dans Claude');
+  });
+}
+
+function importFromClipboard() {
+  const raw = document.getElementById('import-json').value.trim();
+  if (!raw) { showToast('Colle d\'abord le JSON', true); return; }
+  applyImport(raw);
+}
+
+function importFromFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => applyImport(e.target.result);
+  reader.readAsText(file);
+}
+
+function applyImport(raw) {
+  let imported;
+  try { imported = JSON.parse(raw); } catch(e) { showToast('JSON invalide', true); return; }
+
+  const d = loadData();
+  let added = 0;
+  let updated = 0;
+
+  if (imported.learner) {
+    d.learner = { ...d.learner, ...imported.learner };
+  }
+
+  if (imported.vocabulary_cards && Array.isArray(imported.vocabulary_cards)) {
+    imported.vocabulary_cards.forEach(card => {
+      const newer = !d.vocab[card.id] || (card.sm2?.last || '') > (d.vocab[card.id]?.sm2?.last || '');
+      if (!d.vocab[card.id]) { d.vocab[card.id] = card; added++; }
+      else if (newer) { d.vocab[card.id] = { ...d.vocab[card.id], ...card }; updated++; }
+    });
+  }
+
+  if (imported.grammar_cards && Array.isArray(imported.grammar_cards)) {
+    imported.grammar_cards.forEach(card => {
+      const newer = !d.grammar[card.id] || (card.sm2?.last || '') > (d.grammar[card.id]?.sm2?.last || '');
+      if (!d.grammar[card.id]) { d.grammar[card.id] = card; added++; }
+      else if (newer) { d.grammar[card.id] = { ...d.grammar[card.id], ...card }; updated++; }
+    });
+  }
+
+  if (imported.kana_mastery) {
+    ['hiragana', 'katakana'].forEach(sys => {
+      if (imported.kana_mastery[sys]) {
+        Object.entries(imported.kana_mastery[sys]).forEach(([jp, info]) => {
+          if (!d.kana[sys][jp]) { d.kana[sys][jp] = info; added++; }
+          else if ((info.sm2?.last || '') > (d.kana[sys][jp].sm2?.last || '')) {
+            d.kana[sys][jp] = { ...d.kana[sys][jp], ...info }; updated++;
+          }
+        });
+      }
+    });
+  }
+
+  if (imported.oral_sessions) {
+    const existingIds = new Set((d.oral_sessions || []).map(s => s.id));
+    (imported.oral_sessions || []).forEach(s => { if (!existingIds.has(s.id)) { d.oral_sessions.push(s); added++; } });
+  }
+
+  d.meta.last_sync = new Date().toISOString();
+  d.meta.sync_source = imported.meta?.source || 'claude-skill';
+  saveData(d);
+
+  document.getElementById('import-json').value = '';
+  document.getElementById('import-area').style.display = 'none';
+  showToast(`✅ Importé : +${added} ajoutés, ${updated} mis à jour`);
+  updateHomeStats();
+  updateSyncScreen();
+  updateProgressScreen();
+}
+
+function resetData() {
+  if (!confirm('Supprimer toutes les données ? Cette action est irréversible.')) return;
+  localStorage.removeItem(DB_KEY);
+  showToast('Données effacées. Rechargement…');
+  setTimeout(() => location.reload(), 1000);
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showTab(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+
+  if (tab === 'home') updateHomeStats();
+  if (tab === 'review') renderReview();
+  if (tab === 'progress') updateProgressScreen();
+  if (tab === 'sync') updateSyncScreen();
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer;
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isError ? '#7f1d1d' : 'var(--surface2)';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+(function init() {
+  const d = loadData();
+  _initBuiltins(d);
+  saveData(d);
+  updateHomeStats();
+
+  // Start review from home if due > 0
+  const due = countDue('all');
+  if (due === 0 && location.hash !== '#review') {
+    // Nothing due, start with hiragana for new users
+    const seen = Object.values(d.kana.hiragana).filter(v => v.sm2).length;
+    if (seen === 0) startMode('hiragana');
+  }
+})();
+</script>
+</body>
+</html>
