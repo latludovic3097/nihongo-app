@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "version": "1.0",
+    "exported_at": null,
+    "source": "claude-skill",
+    "info": "Ce fichier est mis à jour automatiquement après chaque session Claude /nihongo /export"
+  },
+  "learner": {},
+  "vocabulary_cards": [],
+  "kana_mastery": { "hiragana": {}, "katakana": {} },
+  "kanji_cards": [],
+  "grammar_cards": [],
+  "oral_sessions": [],
+  "review_queue": [],
+  "achievements": []
+}

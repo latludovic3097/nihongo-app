@@ -409,9 +409,30 @@ textarea.paste-area {
 .achievement .ach-icon { font-size: 28px; }
 .achievement .ach-name { font-size: 14px; font-weight: 600; }
 .achievement .ach-desc { font-size: 12px; color: var(--text2); }
+
+/* Sync status bar */
+.sync-bar {
+  position: fixed;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  padding: 7px 16px;
+  font-size: 12px; font-weight: 500;
+  text-align: center; z-index: 150;
+  transition: opacity 0.4s 2s, transform 0.3s;
+}
+.sync-bar.syncing { background: #1e3a5f; color: #93c5fd; }
+.sync-bar.synced  { background: #14532d; color: #86efac; }
+.sync-bar.error   { background: #3b1515; color: #fca5a5; }
+.sync-bar.offline { background: var(--surface2); color: var(--text2); }
+.sync-bar.hidden  { opacity: 0; pointer-events: none; }
+.screen { padding-top: 30px; }
 </style>
 </head>
 <body>
+
+<!-- Sync status bar (auto-GitHub) -->
+<div id="sync-bar" class="sync-bar hidden"></div>
 
 <!-- Home Screen -->
 <div class="screen active" id="screen-home">
@@ -588,11 +609,10 @@ textarea.paste-area {
   <div class="header"><h1>同期</h1><div class="jp">Synchronisation</div></div>
 
   <div class="info-box">
-    <strong>Comment ça marche :</strong><br>
-    1. Dans Claude Code, tape <code>/nihongo</code> puis <code>/export</code><br>
-    2. Copie le contenu de <code>sync-export.json</code> et colle-le ci-dessous<br>
-    3. Les nouvelles cartes apparaîtront dans tes révisions<br><br>
-    Pour envoyer ta progression à Claude, utilise "Exporter" puis <code>/import</code>
+    <strong>Sync automatique activée 🚀</strong><br>
+    À chaque ouverture de l'app, la progression de tes sessions Claude est récupérée automatiquement depuis GitHub.<br><br>
+    <strong>Flux :</strong> Claude <code>/export</code> → push GitHub → app se synchronise au chargement 🎯<br><br>
+    Pour envoyer ta progression mobile vers Claude : "Exporter" ci-dessous → <code>/import</code> dans Claude
   </div>
 
   <button class="sync-btn export" onclick="exportToClipboard()">
@@ -1216,62 +1236,107 @@ function importFromFile(input) {
   reader.readAsText(file);
 }
 
-function applyImport(raw) {
-  let imported;
-  try { imported = JSON.parse(raw); } catch(e) { showToast('JSON invalide', true); return; }
-
+// Merge logic partagée (utilisée par import manuel ET sync GitHub)
+function applyImportData(imported) {
   const d = loadData();
-  let added = 0;
-  let updated = 0;
+  let added = 0, updated = 0;
 
-  if (imported.learner) {
-    d.learner = { ...d.learner, ...imported.learner };
-  }
+  if (imported.learner) d.learner = { ...d.learner, ...imported.learner };
 
   if (imported.vocabulary_cards && Array.isArray(imported.vocabulary_cards)) {
     imported.vocabulary_cards.forEach(card => {
-      const newer = !d.vocab[card.id] || (card.sm2?.last || '') > (d.vocab[card.id]?.sm2?.last || '');
       if (!d.vocab[card.id]) { d.vocab[card.id] = card; added++; }
-      else if (newer) { d.vocab[card.id] = { ...d.vocab[card.id], ...card }; updated++; }
+      else if ((card.sm2?.last||'') > (d.vocab[card.id]?.sm2?.last||'')) { d.vocab[card.id] = {...d.vocab[card.id],...card}; updated++; }
     });
   }
-
   if (imported.grammar_cards && Array.isArray(imported.grammar_cards)) {
     imported.grammar_cards.forEach(card => {
-      const newer = !d.grammar[card.id] || (card.sm2?.last || '') > (d.grammar[card.id]?.sm2?.last || '');
       if (!d.grammar[card.id]) { d.grammar[card.id] = card; added++; }
-      else if (newer) { d.grammar[card.id] = { ...d.grammar[card.id], ...card }; updated++; }
+      else if ((card.sm2?.last||'') > (d.grammar[card.id]?.sm2?.last||'')) { d.grammar[card.id] = {...d.grammar[card.id],...card}; updated++; }
     });
   }
-
   if (imported.kana_mastery) {
-    ['hiragana', 'katakana'].forEach(sys => {
+    ['hiragana','katakana'].forEach(sys => {
       if (imported.kana_mastery[sys]) {
         Object.entries(imported.kana_mastery[sys]).forEach(([jp, info]) => {
           if (!d.kana[sys][jp]) { d.kana[sys][jp] = info; added++; }
-          else if ((info.sm2?.last || '') > (d.kana[sys][jp].sm2?.last || '')) {
-            d.kana[sys][jp] = { ...d.kana[sys][jp], ...info }; updated++;
-          }
+          else if ((info.sm2?.last||'') > (d.kana[sys][jp].sm2?.last||'')) { d.kana[sys][jp] = {...d.kana[sys][jp],...info}; updated++; }
         });
       }
     });
   }
-
   if (imported.oral_sessions) {
-    const existingIds = new Set((d.oral_sessions || []).map(s => s.id));
-    (imported.oral_sessions || []).forEach(s => { if (!existingIds.has(s.id)) { d.oral_sessions.push(s); added++; } });
+    const ids = new Set((d.oral_sessions||[]).map(s=>s.id));
+    (imported.oral_sessions||[]).forEach(s => { if (!ids.has(s.id)) { d.oral_sessions.push(s); added++; } });
   }
 
   d.meta.last_sync = new Date().toISOString();
-  d.meta.sync_source = imported.meta?.source || 'claude-skill';
+  d.meta.sync_source = imported.meta?.source || 'github';
   saveData(d);
-
-  document.getElementById('import-json').value = '';
-  document.getElementById('import-area').style.display = 'none';
-  showToast(`✅ Importé : +${added} ajoutés, ${updated} mis à jour`);
   updateHomeStats();
   updateSyncScreen();
   updateProgressScreen();
+  return { added, updated };
+}
+
+function applyImport(raw) {
+  let imported;
+  try { imported = JSON.parse(raw); } catch(e) { showToast('JSON invalide', true); return; }
+  const { added, updated } = applyImportData(imported);
+  document.getElementById('import-json').value = '';
+  document.getElementById('import-area').style.display = 'none';
+  showToast(`✅ Importé : +${added} ajoutés, ${updated} mis à jour`);
+}
+
+// ============================================================
+// GITHUB AUTO-SYNC
+// ============================================================
+const GITHUB_SYNC_URL = 'https://latludovic3097.github.io/nihongo-app/sync-export.json';
+
+async function fetchGitHubSync() {
+  // Uniquement sur HTTP(S) — pas en file://
+  if (location.protocol === 'file:') return;
+
+  const bar = document.getElementById('sync-bar');
+  bar.className = 'sync-bar syncing';
+  bar.textContent = '🔄 Synchronisation…';
+
+  try {
+    const res = await fetch(GITHUB_SYNC_URL + '?t=' + Date.now(), { cache: 'no-store' });
+
+    if (res.status === 404) {
+      bar.className = 'sync-bar offline hidden';
+      return; // Pas encore de données, pas d'erreur
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    const data = await res.json();
+
+    if (!data?.meta?.exported_at) {
+      bar.className = 'sync-bar offline hidden';
+      return;
+    }
+
+    const d = loadData();
+    const localSync = d.meta?.last_sync || '0';
+    const remoteSync = data.meta.exported_at;
+
+    if (remoteSync > localSync) {
+      const { added, updated } = applyImportData(data);
+      const hm = new Date(remoteSync).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+      bar.textContent = `✅ Sync Claude (${hm}) — +${added} cartes`;
+    } else {
+      bar.textContent = '✅ À jour';
+    }
+    bar.className = 'sync-bar synced';
+
+  } catch(e) {
+    bar.className = 'sync-bar offline';
+    bar.textContent = '📴 Hors ligne — données locales';
+  }
+
+  // Masquer après 3 secondes
+  setTimeout(() => bar.classList.add('hidden'), 3000);
 }
 
 function resetData() {
@@ -1318,10 +1383,12 @@ function showToast(msg, isError) {
   saveData(d);
   updateHomeStats();
 
-  // Start review from home if due > 0
+  // Sync automatique depuis GitHub au chargement
+  fetchGitHubSync();
+
+  // Proposer hiragana aux nouveaux utilisateurs
   const due = countDue('all');
   if (due === 0 && location.hash !== '#review') {
-    // Nothing due, start with hiragana for new users
     const seen = Object.values(d.kana.hiragana).filter(v => v.sm2).length;
     if (seen === 0) startMode('hiragana');
   }
