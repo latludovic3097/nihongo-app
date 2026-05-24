@@ -410,6 +410,134 @@ textarea.paste-area {
 .achievement .ach-name { font-size: 14px; font-weight: 600; }
 .achievement .ach-desc { font-size: 12px; color: var(--text2); }
 
+/* ====== CONVERSATION (話す) STYLES ====== */
+.hanasu-screen { display: flex; flex-direction: column; height: 100dvh; padding: 0; }
+.hanasu-header {
+  padding: 12px 16px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.hanasu-header h2 { font-size: 17px; font-weight: 700; flex: 1; }
+.hanasu-setup { padding: 16px; flex-shrink: 0; }
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 16px;
+}
+
+.msg {
+  max-width: 85%;
+  border-radius: 16px;
+  padding: 10px 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.msg.user { background: var(--accent); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg.sensei { background: var(--surface); align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.sensei .jp { font-size: 17px; font-weight: 500; }
+.msg.sensei .fr { font-size: 12px; color: var(--text2); margin-top: 4px; }
+.msg.sensei .correction { font-size: 12px; color: var(--warning); margin-top: 4px; }
+.msg.sensei .tts-inline { background: none; border: none; cursor: pointer; font-size: 16px; float: right; margin-left: 8px; }
+.msg.system { background: var(--surface2); color: var(--text2); font-size: 13px; align-self: center; font-style: italic; border-radius: 10px; }
+
+.hanasu-input {
+  flex-shrink: 0;
+  padding: 12px 16px calc(var(--nav-h) + 12px + var(--safe-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.hanasu-input textarea {
+  flex: 1;
+  background: var(--surface2);
+  border: none;
+  border-radius: 12px;
+  color: var(--text);
+  padding: 10px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  max-height: 100px;
+  line-height: 1.4;
+}
+
+.mic-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.1s;
+}
+.mic-btn.recording { background: var(--accent); animation: pulse 1s infinite; }
+.mic-btn:active { transform: scale(0.92); }
+
+.send-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.send-btn:disabled { opacity: 0.4; }
+
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
+}
+
+.typing-indicator {
+  display: flex; gap: 4px; align-items: center;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 16px;
+  border-bottom-left-radius: 4px;
+  width: fit-content;
+}
+.typing-indicator span {
+  width: 7px; height: 7px;
+  background: var(--text2);
+  border-radius: 50%;
+  animation: bounce 1s infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bounce {
+  0%,60%,100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
+
+.select-styled {
+  background: var(--surface2);
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+}
+
 /* Sync status bar */
 .sync-bar {
   position: fixed;
@@ -503,6 +631,82 @@ textarea.paste-area {
       <span style="font-size:28px">→</span>
     </div>
   </div>
+</div>
+
+<!-- Hanasu Screen (話す — Conversation) -->
+<div class="screen hanasu-screen" id="screen-hanasu">
+
+  <div class="hanasu-header">
+    <div>
+      <h2>話す <span style="font-size:13px;color:var(--text2);font-weight:400">Conversation</span></h2>
+    </div>
+    <button class="btn secondary" style="padding:6px 12px;font-size:13px" onclick="endHanasuSession()">Terminer</button>
+  </div>
+
+  <!-- Setup (avant démarrage) -->
+  <div id="hanasu-setup" class="hanasu-setup">
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:12px">Configurer la session</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Niveau</div>
+          <select class="select-styled" id="h-level" style="width:100%">
+            <option value="N5">N5 — Débutant (phrases simples)</option>
+            <option value="N4">N4 — Élémentaire (quotidien)</option>
+            <option value="N3">N3 — Intermédiaire</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Mode</div>
+          <select class="select-styled" id="h-mode" style="width:100%" onchange="updateScenarioVisibility()">
+            <option value="libre">Conversation libre</option>
+            <option value="scenario">Scénario (jeu de rôle)</option>
+            <option value="drill">Exercice ciblé</option>
+          </select>
+        </div>
+        <div id="h-scenario-wrap">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Scénario</div>
+          <select class="select-styled" id="h-scenario" style="width:100%">
+            <option value="自己紹介">自己紹介 — Se présenter</option>
+            <option value="カフェで注文">カフェで注文 — Commander au café</option>
+            <option value="道を聞く">道を聞く — Demander son chemin</option>
+            <option value="買い物">買い物 — Faire les courses</option>
+            <option value="病院で">病院で — Chez le médecin</option>
+            <option value="ホテルのチェックイン">ホテル — Hôtel check-in</option>
+            <option value="趣味について話す">趣味 — Parler de ses hobbies</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="info-box" style="margin-bottom:12px">
+      🎤 Parle ou écris en japonais — <strong>Sensei</strong> te répond en japonais.<br>
+      Sa réponse sera lue à voix haute automatiquement.<br>
+      <span style="color:var(--accent)" id="worker-status-txt">⚙️ Vérification de la connexion…</span>
+    </div>
+    <button class="btn" style="width:100%;padding:14px;font-size:16px" onclick="startHanasu()" id="start-hanasu-btn" disabled>
+      はじめましょう！ — Commencer
+    </button>
+  </div>
+
+  <!-- Chat actif -->
+  <div id="hanasu-chat" style="display:none;flex:1;display:flex;flex-direction:column;overflow:hidden">
+    <div class="messages" id="messages"></div>
+    <div class="hanasu-input">
+      <textarea id="h-input" placeholder="Écris en japonais… ou utilise le micro 🎤" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+      <button class="mic-btn" id="mic-btn" onclick="toggleMic()" title="Parler">🎤</button>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <!-- Bilan de fin -->
+  <div id="hanasu-bilan" style="display:none;padding:16px;overflow-y:auto;padding-bottom:calc(var(--nav-h)+16px)">
+    <div style="font-size:20px;font-weight:700;margin-bottom:16px">📝 Bilan de session</div>
+    <div id="bilan-content"></div>
+    <button class="btn" style="width:100%;margin-top:16px" onclick="showTab('home')">Retour à l'accueil</button>
+  </div>
+
 </div>
 
 <!-- Review Screen -->
@@ -659,6 +863,10 @@ textarea.paste-area {
   <button class="nav-btn" id="nav-review" onclick="showTab('review')">
     <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
     復習
+  </button>
+  <button class="nav-btn" id="nav-hanasu" onclick="showTab('hanasu')">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    話す
   </button>
   <button class="nav-btn" id="nav-progress" onclick="showTab('progress')">
     <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -1289,6 +1497,277 @@ function applyImport(raw) {
 }
 
 // ============================================================
+// CONVERSATION 話す — HANASU
+// ============================================================
+const WORKER_URL = 'https://nihongo-sensei.latludovic3097.workers.dev';
+let hMessages = [];        // historique conversation
+let hCorrections = [];     // corrections accumulées
+let hNewVocab = [];        // nouveau vocabulaire
+let hRecognition = null;   // Web Speech Recognition
+let hRecording = false;
+let hActive = false;
+
+async function checkWorkerOnline() {
+  try {
+    const r = await fetch(WORKER_URL, { method: 'OPTIONS' });
+    return r.ok || r.status === 204 || r.status === 405;
+  } catch { return false; }
+}
+
+function initHanasuScreen() {
+  document.getElementById('hanasu-setup').style.display = 'block';
+  document.getElementById('hanasu-chat').style.display = 'none';
+  document.getElementById('hanasu-bilan').style.display = 'none';
+  if (hActive) return; // déjà en session
+
+  checkWorkerOnline().then(ok => {
+    const txt = document.getElementById('worker-status-txt');
+    const btn = document.getElementById('start-hanasu-btn');
+    if (ok) {
+      txt.textContent = '✅ Sensei est en ligne — prêt à discuter !';
+      txt.style.color = 'var(--success)';
+      btn.disabled = false;
+    } else {
+      txt.innerHTML = '❌ Sensei hors ligne.<br><small>Déploie le Cloudflare Worker (voir README)</small>';
+      txt.style.color = 'var(--accent2)';
+      btn.disabled = true;
+    }
+  });
+}
+
+function updateScenarioVisibility() {
+  const mode = document.getElementById('h-mode').value;
+  document.getElementById('h-scenario-wrap').style.display = mode === 'scenario' ? 'block' : 'none';
+}
+
+async function startHanasu() {
+  hMessages = [];
+  hCorrections = [];
+  hNewVocab = [];
+  hActive = true;
+
+  document.getElementById('hanasu-setup').style.display = 'none';
+  document.getElementById('hanasu-chat').style.display = 'flex';
+  document.getElementById('hanasu-bilan').style.display = 'none';
+  document.getElementById('messages').innerHTML = '';
+
+  const level = document.getElementById('h-level').value;
+  const mode = document.getElementById('h-mode').value;
+  const scenario = mode === 'scenario' ? document.getElementById('h-scenario').value : '';
+
+  addSystemMsg(`Session démarrée — Niveau ${level}${scenario ? ' • ' + scenario : ''}`);
+
+  // Message d'ouverture de Sensei
+  await callSensei([{
+    role: 'user',
+    content: mode === 'scenario'
+      ? `Commençons le jeu de rôle : ${scenario}. Démarre la scène en japonais.`
+      : mode === 'drill'
+      ? `Prépare un exercice de conversation pour niveau ${level}.`
+      : `Bonjour ! Démarrons une conversation en japonais pour niveau ${level}.`
+  }], level, mode, scenario);
+}
+
+async function sendMessage() {
+  const input = document.getElementById('h-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const d = loadData();
+  const level = document.getElementById('h-level')?.value || d.learner?.current_level || 'N5';
+  const mode = document.getElementById('h-mode')?.value || 'libre';
+  const scenario = mode === 'scenario' ? (document.getElementById('h-scenario')?.value || '') : '';
+
+  input.value = '';
+  input.style.height = 'auto';
+  addMsg('user', text);
+  hMessages.push({ role: 'user', content: text });
+
+  await callSensei(hMessages, level, mode, scenario);
+}
+
+async function callSensei(msgs, level, mode, scenario) {
+  const typingEl = addTypingIndicator();
+
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: msgs, level, mode, scenario })
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+
+    typingEl.remove();
+
+    const jp = data.japanese || '';
+    const fr = data.french || '';
+    const correction = data.correction || null;
+    const newVocab = data.new_vocab || [];
+
+    addSenseiMsg(jp, fr, correction);
+    hMessages.push({ role: 'assistant', content: jp });
+
+    if (correction) hCorrections.push(correction);
+    if (newVocab.length) hNewVocab.push(...newVocab);
+
+    // TTS automatique
+    if (jp) speak(jp);
+
+  } catch(e) {
+    typingEl.remove();
+    addSystemMsg('⚠️ Erreur de connexion — vérifie ta connexion internet');
+  }
+}
+
+function addMsg(role, text) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + role;
+  el.textContent = text;
+  document.getElementById('messages').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return el;
+}
+
+function addSenseiMsg(jp, fr, correction) {
+  const el = document.createElement('div');
+  el.className = 'msg sensei';
+  el.innerHTML = `
+    <button class="tts-inline" onclick="speak('${jp.replace(/'/g,"\\'")}')">🔊</button>
+    <div class="jp">${jp}</div>
+    ${fr ? `<div class="fr">${fr}</div>` : ''}
+    ${correction ? `<div class="correction">💡 ${correction}</div>` : ''}
+  `;
+  document.getElementById('messages').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return el;
+}
+
+function addSystemMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'msg system';
+  el.textContent = text;
+  document.getElementById('messages').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function addTypingIndicator() {
+  const el = document.createElement('div');
+  el.className = 'typing-indicator';
+  el.innerHTML = '<span></span><span></span><span></span>';
+  document.getElementById('messages').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return el;
+}
+
+// Micro — Web Speech Recognition
+function toggleMic() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('STT non supporté sur ce navigateur', true);
+    return;
+  }
+  if (hRecording) {
+    hRecognition?.stop();
+    return;
+  }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  hRecognition = new SR();
+  hRecognition.lang = 'ja-JP';
+  hRecognition.interimResults = false;
+  hRecognition.maxAlternatives = 1;
+
+  hRecognition.onstart = () => {
+    hRecording = true;
+    document.getElementById('mic-btn').classList.add('recording');
+    document.getElementById('mic-btn').textContent = '⏹';
+  };
+
+  hRecognition.onresult = e => {
+    const transcript = e.results[0][0].transcript;
+    document.getElementById('h-input').value = transcript;
+  };
+
+  hRecognition.onend = () => {
+    hRecording = false;
+    document.getElementById('mic-btn').classList.remove('recording');
+    document.getElementById('mic-btn').textContent = '🎤';
+    // Auto-envoyer si du texte a été capturé
+    if (document.getElementById('h-input').value.trim()) sendMessage();
+  };
+
+  hRecognition.onerror = () => {
+    hRecording = false;
+    document.getElementById('mic-btn').classList.remove('recording');
+    document.getElementById('mic-btn').textContent = '🎤';
+  };
+
+  hRecognition.start();
+}
+
+function endHanasuSession() {
+  hActive = false;
+  hRecognition?.stop();
+  window.speechSynthesis?.cancel();
+
+  if (hMessages.length < 2) {
+    showTab('home');
+    return;
+  }
+
+  // Sauvegarder le vocab nouveau dans la DB
+  const d = loadData();
+  let added = 0;
+  hNewVocab.forEach((v, i) => {
+    const id = 'oral_' + Date.now() + '_' + i;
+    if (!d.vocab[id]) {
+      d.vocab[id] = { id, jp: v.jp, k: v.kana, r: '', fr: v.fr, type: 'vocab', jlpt: 'oral', sm2: null, added_from: 'hanasu' };
+      added++;
+    }
+  });
+
+  // Log de session orale
+  const session = {
+    id: 'os_' + Date.now(),
+    date: today(),
+    mode: document.getElementById('h-mode')?.value || 'libre',
+    exchanges: Math.floor(hMessages.length / 2),
+    corrections: hCorrections.length,
+    new_vocab: hNewVocab.map(v => v.jp),
+  };
+  d.oral_sessions = d.oral_sessions || [];
+  d.oral_sessions.push(session);
+  d.learner.total_sessions = (d.learner.total_sessions || 0) + 1;
+  saveData(d);
+
+  // Afficher le bilan
+  document.getElementById('hanasu-chat').style.display = 'none';
+  document.getElementById('hanasu-bilan').style.display = 'block';
+  document.getElementById('bilan-content').innerHTML = `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+        <div><div style="font-size:24px;font-weight:700">${session.exchanges}</div><div style="font-size:12px;color:var(--text2)">Échanges</div></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--warning)">${session.corrections}</div><div style="font-size:12px;color:var(--text2)">Corrections</div></div>
+        <div><div style="font-size:24px;font-weight:700;color:var(--success)">${added}</div><div style="font-size:12px;color:var(--text2)">Nouveaux mots</div></div>
+      </div>
+    </div>
+    ${hCorrections.length ? `
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-weight:700;margin-bottom:8px">💡 Points à retenir</div>
+      ${hCorrections.map(c => `<div style="font-size:13px;color:var(--warning);padding:4px 0;border-bottom:1px solid var(--border)">${c}</div>`).join('')}
+    </div>` : ''}
+    ${added ? `
+    <div class="card">
+      <div style="font-weight:700;margin-bottom:8px">📚 Nouveaux mots ajoutés aux flashcards</div>
+      ${hNewVocab.map(v => `<div style="font-size:13px;padding:4px 0">${v.jp} <span style="color:var(--text2)">— ${v.fr}</span></div>`).join('')}
+    </div>` : ''}
+  `;
+
+  showToast('Session terminée ! Nouveaux mots ajoutés aux flashcards.');
+}
+
+// ============================================================
 // GITHUB AUTO-SYNC
 // ============================================================
 const GITHUB_SYNC_URL = 'https://latludovic3097.github.io/nihongo-app/sync-export.json';
@@ -1357,6 +1836,7 @@ function showTab(tab) {
 
   if (tab === 'home') updateHomeStats();
   if (tab === 'review') renderReview();
+  if (tab === 'hanasu') initHanasuScreen();
   if (tab === 'progress') updateProgressScreen();
   if (tab === 'sync') updateSyncScreen();
 }
