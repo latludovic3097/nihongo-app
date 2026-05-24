@@ -1882,7 +1882,10 @@ function resetData() {
 // NAVIGATION
 // ============================================================
 function showTab(tab) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = ''; // clear any JS inline display (e.g. from hanasu flex fix)
+  });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-' + tab).classList.add('active');
   document.getElementById('nav-' + tab).classList.add('active');
@@ -1893,7 +1896,10 @@ function showTab(tab) {
     initHanasuScreen();
   }
   if (tab === 'home') updateHomeStats();
-  if (tab === 'review') renderReview();
+  if (tab === 'review') {
+    if (reviewQueue.length === 0) { reviewQueue = buildQueue(currentMode); reviewIndex = 0; cardFlipped = false; }
+    renderReview();
+  }
   if (tab === 'progress') updateProgressScreen();
   if (tab === 'sync') updateSyncScreen();
 }
